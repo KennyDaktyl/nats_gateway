@@ -1,0 +1,17 @@
+services:
+  # nats-global:
+  #   image: nats:latest
+  #   container_name: smart_energy_nats
+  #   ports:
+  #     - "4222:4222"
+
+  nats_gateway:
+    build: .
+    container_name: smart_energy_nats_gateway
+    # restart: always
+    ports:
+    - "8765:8765"
+    # depends_on:
+    #   - nats-global
+    env_file:
+      - .env
