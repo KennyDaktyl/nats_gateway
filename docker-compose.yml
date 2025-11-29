@@ -1,17 +1,8 @@
 services:
-  # nats:
-  #   image: nats:2.10-alpine
-  #   container_name: nats
-  #   # restart: always
-  #   ports:
-  #     - "4222:4222"
-  #     - "8222:8222"
-  #   command: ["-js"]
-
   nats_gateway:
     build: .
     container_name: nats_gateway
-    # restart: always
+    restart: always
     ports:
     - "8765:8765"
     depends_on:
