@@ -28,14 +28,22 @@ async def start_gateway():
         RASPBERRY_HEARTBEAT, durable="heartbeat_gateway"
     )
 
-    asyncio.create_task(inverter_consumer(sub_inverter))
-    asyncio.create_task(heartbeat_consumer(sub_heartbeat))
-    asyncio.create_task(watchdog(last_seen, raspberry_status))
+    tasks = [
+        asyncio.create_task(inverter_consumer(sub_inverter)),
+        asyncio.create_task(heartbeat_consumer(sub_heartbeat)),
+        asyncio.create_task(watchdog(last_seen, raspberry_status)),
+    ]
 
-    ws_server = await websockets.serve(websocket_handler, "0.0.0.0", 8765)
+    server = await websockets.serve(websocket_handler, "0.0.0.0", 8765)
     logger.info("🌐 WebSocket ready at ws://0.0.0.0:8765")
 
-    await asyncio.Future()
+    try:
+        await asyncio.Event().wait()
+    finally:
+        for t in tasks:
+            t.cancel()
+            logger.warning("Task cancelled:", t)
+
 
 
 if __name__ == "__main__":
