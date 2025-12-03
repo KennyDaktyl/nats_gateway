@@ -1,3 +1,4 @@
+# app/main.py
 import asyncio
 import websockets
 import nats

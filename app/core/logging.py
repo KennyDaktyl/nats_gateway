@@ -21,11 +21,11 @@ file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(formatter)
 
 console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setLevel(logging.DEBUG)
+console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(formatter)
 
 root_logger = logging.getLogger()
-root_logger.setLevel(logging.DEBUG)
+root_logger.setLevel(logging.INFO)
 
 for handler in list(root_logger.handlers):
     root_logger.removeHandler(handler)
@@ -39,6 +39,6 @@ for name in ["uvicorn", "uvicorn.error", "uvicorn.access"]:
     log.setLevel(logging.INFO)
     log.propagate = False
 
-root_logger.info(f"✅ Logging initialized. Writing logs to: {LOG_FILE_PATH}")
+root_logger.info(f"Logging initialized. Writing logs to: {LOG_FILE_PATH}")
 
 logger = logging.getLogger("app")

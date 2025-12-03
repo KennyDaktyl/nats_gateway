@@ -1,3 +1,4 @@
+# app/nats/consumer_heartbeat.py
 import json
 import time
 from app.core.logging import logger
