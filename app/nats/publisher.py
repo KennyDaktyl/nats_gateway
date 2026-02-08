@@ -1,29 +1,42 @@
 # app/nats/publisher.py
 import json
-
 from app.core.logging import logger
 
-jetstream_client = None
+_nats_client = None
 
 
-def set_jetstream_client(js):
+def set_nats_client(nc):
     """
-    Store the JetStream client so that WS handlers can publish control events.
+    Attach NATS Core client for publishing control events.
     """
-    global jetstream_client
-    jetstream_client = js
-    logger.info("JetStream client attached to publisher")
+    global _nats_client
+    _nats_client = nc
+    logger.info("NATS client attached to publisher")
 
 
-async def publish_event(subject: str, action: str, data: dict = {}):
-    if not jetstream_client:
+async def publish_event(subject: str, action: str, data: dict | None = None):
+    if not _nats_client:
         logger.error(
             f"Cannot publish event '{action}' for {subject}: "
-            f"JetStream client is not set"
+            f"NATS client is not set"
         )
         return
 
-    payload = json.dumps(data).encode()
+    payload = {
+        "subject": subject,
+        "action": action,
+        "data": data or {},
+    }
 
-    logger.info(f"Publishing event '{action}' for Subject {subject} ")
-    await jetstream_client.publish(subject, payload)
+    try:
+        await _nats_client.publish(
+            f"control.{subject}",
+            json.dumps(payload).encode(),
+        )
+        logger.info(
+            f"Published control event '{action}' for {subject}"
+        )
+    except Exception as e:
+        logger.exception(
+            f"Failed to publish control event '{action}' for {subject}: {e}"
+        )

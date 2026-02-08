@@ -1,5 +1,6 @@
-# app/ws/send.py
 import json
+import asyncio
+
 from app.ws.subscriptions import (
     get_subscribers,
     ws_label,
@@ -7,33 +8,65 @@ from app.ws.subscriptions import (
 from app.core.logging import logger
 
 
+SEND_TIMEOUT = 1.0  # seconds
+
+
+async def _send_one(ws, msg: str, subject: str) -> bool:
+    """
+    Send message to single WS client.
+
+    Returns:
+        True  -> delivered
+        False -> failed / timeout
+    """
+    try:
+        await asyncio.wait_for(ws.send(msg), timeout=SEND_TIMEOUT)
+        return True
+    except asyncio.TimeoutError:
+        logger.warning(
+            f"WS send timeout to {ws_label(ws)} for subject {subject}"
+        )
+    except Exception as e:
+        logger.warning(
+            f"WS send failed to {ws_label(ws)} "
+            f"for subject {subject}: {e}"
+        )
+    return False
+
+
 async def send_to_subscribers(subject: str, data: dict):
-    subs = get_subscribers(subject)
+    # ---------------------------------------------------------
+    # Snapshot subscribers (SAFE)
+    # ---------------------------------------------------------
+    subs = await get_subscribers(subject)
     if not subs:
-        logger.info(f"No WS subscribers for Subject {subject}, skipping send")
+        logger.debug(f"No WS subscribers for subject {subject}")
         return
 
     msg = json.dumps(data)
-    dead = []
 
-    subscribers_labels = [ws_label(ws) for ws in subs]
     logger.info(
-        f"Sending event for subject {subject} to {len(subs)} WS client(s): "
-        f"{subscribers_labels}"
+        f"Sending event for subject {subject} "
+        f"to {len(subs)} WS client(s): "
+        f"{[ws_label(ws) for ws in subs]}"
     )
 
-    for ws in list(subs):
-        try:
-            await ws.send(msg)
-        except Exception as e:
-            dead.append(ws)
-            logger.warning(f"Send failed to {ws_label(ws)} for Subject {subject}: {e}")
+    # ---------------------------------------------------------
+    # Fan-out PARALLEL (isolated clients)
+    # ---------------------------------------------------------
+    tasks = [
+        _send_one(ws, msg, subject)
+        for ws in subs
+    ]
 
-    if dead:
-        logger.info(f"Pruned {len(dead)} dead WS connections for Subject {subject}")
+    results = await asyncio.gather(
+        *tasks,
+        return_exceptions=False,
+    )
 
-    delivered = len(subs) - len(dead)
-    logger.info(f"Sent event to {delivered} WS subscriber(s) for Subject {subject}")
+    delivered = sum(1 for r in results if r)
 
-    for ws in dead:
-        subs.discard(ws)
+    logger.info(
+        f"Sent event for subject {subject} "
+        f"to {delivered}/{len(subs)} WS subscriber(s)"
+    )

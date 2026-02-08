@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     LOG_DIR: str = Field("logs", env="LOG_DIR")
     BACKEND_API_URL: str = Field("http://smart-api.resto-app.pl", env="BACKEND_API_URL")
     SUBJECT: str = Field(
-        "device_communication.{uuid}.event.>",
+        "device_communication.>",
         env="SUBJECT",
     )
 
